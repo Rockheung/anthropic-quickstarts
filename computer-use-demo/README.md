@@ -37,6 +37,9 @@ Please use [this form](https://forms.gle/BT1hpBrqDPDUrCqo7) to provide feedback 
 > [!TIP]
 > You can find your API key in the [Anthropic Console](https://console.anthropic.com/).
 
+> [!TIP]
+> This Docker image includes both Firefox ESR and Chromium browsers. If you experience crashes with Firefox ESR, try using Chromium as an alternative browser by launching it through the desktop interface or bash terminal.
+
 ```bash
 export ANTHROPIC_API_KEY=%your_api_key%
 docker run \
