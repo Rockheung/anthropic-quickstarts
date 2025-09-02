@@ -45,7 +45,6 @@ RUN apt-get update && \
     sudo apt-get install -y --no-install-recommends \
     libreoffice \
     firefox-esr \
-    chromium-browser \
     x11-apps \
     xpdf \
     gedit \
