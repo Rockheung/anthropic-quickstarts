@@ -35,7 +35,11 @@ RUN apt-get update && \
     net-tools \
     netcat \
     # PPA req
-    software-properties-common && \
+    software-properties-common \
+    # Font packages
+    fonts-nanum \
+    fonts-nanum-extra \
+    fonts-nanum-coding && \
     # Userland apps
     sudo add-apt-repository ppa:mozillateam/ppa && \
     sudo apt-get install -y --no-install-recommends \
