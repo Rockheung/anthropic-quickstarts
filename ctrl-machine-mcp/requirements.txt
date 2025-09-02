@@ -1,0 +1,31 @@
+# MCP Server Core
+mcp>=0.1.0
+
+# HID Input Control
+pyautogui>=0.9.54
+pynput>=1.7.6
+
+# Screenshot Capture
+mss>=9.0.1
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Platform-specific dependencies
+pyobjc-core>=9.0; sys_platform == 'darwin'
+pyobjc-framework-Quartz>=9.0; sys_platform == 'darwin'
+pyobjc-framework-AppKit>=9.0; sys_platform == 'darwin'
+pywin32>=305; sys_platform == 'win32'
+psutil>=5.9.0; sys_platform == 'win32'
+
+# Async support
+asyncio>=3.4.3
+
+# Testing (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+
+# Development tools (optional)
+black>=23.0.0
+ruff>=0.1.0
+mypy>=1.5.0

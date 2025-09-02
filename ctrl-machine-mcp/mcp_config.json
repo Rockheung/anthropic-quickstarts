@@ -1,0 +1,54 @@
+{
+  "mcpServers": {
+    "hid-input-mcp": {
+      "command": "python",
+      "args": ["/Users/rock/Documents/rockheung/anthropic-quickstarts/ctrl-machine-mcp/hid_input_mcp.py"],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "description": "HID Input MCP Server - Provides hardware-level keyboard and mouse control"
+    },
+    "screenshot-mcp": {
+      "command": "python",
+      "args": ["/Users/rock/Documents/rockheung/anthropic-quickstarts/ctrl-machine-mcp/screenshot_mcp.py"],
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "description": "Screenshot MCP Server - Provides screen capture with periodic and event-based modes"
+    },
+    "computer-control-mcp": {
+      "command": "python",
+      "args": ["/Users/rock/Documents/rockheung/anthropic-quickstarts/computer-use-demo/mcp_server.py"],
+      "env": {
+        "PYTHONUNBUFFERED": "1",
+        "DISPLAY": ":1"
+      },
+      "description": "Computer Control MCP Server - Original computer-use-demo MCP integration"
+    }
+  },
+  "settings": {
+    "screenshot": {
+      "default_interval": 1.0,
+      "max_history": 50,
+      "default_mode": "full_screen",
+      "formats": ["png", "jpeg"],
+      "quality": {
+        "png": 9,
+        "jpeg": 85
+      }
+    },
+    "hid_input": {
+      "safety_enabled": true,
+      "default_typing_interval": 0.0,
+      "human_simulation": false,
+      "event_history_limit": 100
+    },
+    "logging": {
+      "level": "INFO",
+      "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+      "file": "/tmp/mcp_server.log",
+      "rotate": true,
+      "max_size": "10MB"
+    }
+  }
+}
