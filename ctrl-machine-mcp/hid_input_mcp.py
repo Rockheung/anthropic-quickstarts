@@ -13,8 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from mcp.server import Server
-from mcp.server.models import InitializationOptions
-from mcp.server.stdio import stdio_handler
+from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 import pyautogui
@@ -674,13 +673,9 @@ async def main():
     """Run the HID Input MCP server."""
     logger.info("Starting HID Input MCP Server...")
     
-    async with stdio_handler(server):
-        await server.run(
-            InitializationOptions(
-                server_name="hid-input-mcp",
-                server_version="1.0.0"
-            )
-        )
+    async with stdio_server(server):
+        # The server will run until the connection is closed
+        await asyncio.Event().wait()
 
 
 if __name__ == "__main__":

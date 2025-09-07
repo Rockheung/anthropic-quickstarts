@@ -1,15 +1,3 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
-
-# 이를 바탕으로 CLAUDE.md를 재작성해. 수 프레임 간격으로 화면 스크린샷을 계속 찍어서 처리하는 부분도 다른 mcp를 연동해서 claude code가 필요할때 주도적으로 동작시키는게 좋을까?
-
-수 프레임 간격으로 스크린샷을 계속 찍어 처리하는 역할은 별도의 **Screenshot MCP**를 연동하는 것이 Claude Code 아키텍처 상 매우 효율적이며, 입력 신호(HID)용 MCP와 독립적으로 관리하는 것이 추천된다. Claude Code는 각 MCP 서버를 필요 시 주도적으로 호출해 동작시킬 수 있으므로, 입력(HID MCP)와 화면 인지(Screenshot MCP) 각각을 분리하여 모듈 구성하면 확장성과 안정성이 높아진다.[^1][^2][^3][^4]
-
-아래는 이러한 구조를 반영한 **CLAUDE.md** 샘플이다.
-
-***
-
-# CLAUDE.md
-
 ## 목적
 
 Claude Code에서 자동화를 위해 두 가지 MCP 서버를 연동한다:
