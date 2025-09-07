@@ -17,9 +17,8 @@ from enum import Enum
 from datetime import datetime
 
 from mcp.server import Server
-from mcp.server.models import InitializationOptions
-from mcp.server.stdio import stdio_handler
-from mcp.types import Tool, TextContent, ImageContent
+from mcp.server.stdio import stdio_server
+from mcp.types import Tool, TextContent
 
 import PIL.Image
 import pyautogui
@@ -757,13 +756,9 @@ async def main():
     """Run the Screenshot MCP server."""
     logger.info("Starting Screenshot MCP Server...")
     
-    async with stdio_handler(server):
-        await server.run(
-            InitializationOptions(
-                server_name="screenshot-mcp",
-                server_version="1.0.0"
-            )
-        )
+    async with stdio_server(server):
+        # The server will run until the connection is closed
+        await asyncio.Event().wait()
 
 
 if __name__ == "__main__":

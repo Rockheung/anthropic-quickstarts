@@ -36,20 +36,32 @@ services:
       retries: 3
       start_period: 40s
 
-  # Optional: Screenshot MCP server (if you have one)
-  # screenshot-mcp:
-  #   build:
-  #     context: ../screenshot-mcp
-  #     dockerfile: Dockerfile
-  #   container_name: screenshot-mcp
-  #   environment:
-  #     - DISPLAY=:99
-  #   volumes:
-  #     - screenshots:/app/screenshots
-  #   networks:
-  #     - mcp-network
-  #   depends_on:
-  #     - hid-mcp
+  # Screenshot MCP server for screen capture
+  screenshot-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    container_name: screenshot-mcp
+    environment:
+      - DISPLAY=:99
+      - MCP_LOG_LEVEL=INFO
+    ports:
+      # Optional port for debugging
+      - "8081:8081"
+    volumes:
+      # Mount the screenshot MCP server script
+      - ./screenshot_mcp.py:/app/screenshot_mcp.py:ro
+      # Optional: Save screenshots
+      - ./screenshots:/app/screenshots
+    command: ["python3", "/app/screenshot_mcp.py"]
+    privileged: true
+    shm_size: '2gb'
+    stdin_open: true
+    tty: true
+    networks:
+      - mcp-network
+    depends_on:
+      - hid-mcp
 
 networks:
   mcp-network:

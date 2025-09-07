@@ -32,8 +32,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set working directory
 WORKDIR /app
 
-# Copy files
-COPY hid_input_mcp.py /app/
+# Copy files (copy individual files or use wildcards)
+COPY *.py /app/
 COPY requirements.txt /app/
 
 # Install Python packages
@@ -41,7 +41,9 @@ RUN pip install --no-cache-dir \
     pyautogui==0.9.54 \
     pynput==1.8.1 \
     mcp==1.13.1 \
-    pillow>=10.0.0
+    pillow>=10.0.0 \
+    mss>=9.0.1 \
+    numpy>=1.24.0
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
