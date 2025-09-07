@@ -2,6 +2,10 @@
 
 Claude Code와 연동하여 컴퓨터 자동화를 위한 두 가지 독립적인 MCP(Model Control Protocol) 서버를 제공합니다.
 
+## 🐳 Docker Support
+
+Full Docker support with Ubuntu 24.04 for containerized HID automation. See [Docker Setup](#docker-setup) section below.
+
 ## 🎯 개요
 
 이 프로젝트는 Claude Code의 자동화 기능을 확장하기 위해 두 가지 핵심 MCP 서버를 구현합니다:
@@ -312,6 +316,58 @@ sudo yum install xdotool      # CentOS/RHEL
 
 ```bash
 pip install --upgrade -r requirements.txt
+```
+
+## 🐳 Docker Setup
+
+### Quick Start with Docker
+
+The HID Input MCP server can run in a Docker container with full GUI automation capabilities.
+
+#### Build and Run
+
+```bash
+# Using Docker Compose (recommended)
+docker-compose up --build
+
+# Or using Docker directly
+docker build -t hid-input-mcp .
+docker run -it --rm --privileged -p 5900:5900 hid-input-mcp
+```
+
+#### Features
+
+- **Ubuntu 24.04** base with full X11 support
+- **Virtual Display**: Xvfb for headless automation
+- **VNC Access**: Connect to port 5900 for debugging
+- **Chrome Browser**: Pre-installed for web automation
+- **Non-root User**: Security-focused setup
+
+#### Test in Container
+
+```bash
+# Run test suite
+docker run -it --rm --privileged \
+  -v $(pwd)/test_docker.py:/app/test_docker.py \
+  hid-input-mcp python3 /app/test_docker.py
+```
+
+#### Environment Variables
+
+- `DISPLAY=:99` - Virtual display number
+- `START_BROWSER=true/false` - Launch Chrome on startup
+- `CHROME_URL` - Initial browser URL
+- `MCP_LOG_LEVEL` - Logging level (INFO/DEBUG)
+
+#### VNC Debugging
+
+Connect to the container's virtual display:
+```bash
+# macOS
+open vnc://localhost:5900
+
+# Linux
+vncviewer localhost:5900
 ```
 
 ## 📚 참고 자료
