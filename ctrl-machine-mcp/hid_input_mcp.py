@@ -14,7 +14,8 @@ from enum import Enum
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.server.models import InitializationOptions
+from mcp.types import Tool, TextContent, ServerCapabilities
 
 import pyautogui
 import pynput
@@ -673,9 +674,17 @@ async def main():
     """Run the HID Input MCP server."""
     logger.info("Starting HID Input MCP Server...")
     
-    async with stdio_server(server):
-        # The server will run until the connection is closed
-        await asyncio.Event().wait()
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="hid-input-mcp",
+                server_version="0.1.0",
+                capabilities=ServerCapabilities(tools={}),
+                instructions="HID Input MCP Server for keyboard and mouse control"
+            )
+        )
 
 
 if __name__ == "__main__":

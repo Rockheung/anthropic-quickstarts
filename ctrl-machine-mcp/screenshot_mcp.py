@@ -18,7 +18,8 @@ from datetime import datetime
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent, ImageContent
+from mcp.server.models import InitializationOptions
+from mcp.types import Tool, TextContent, ImageContent, ServerCapabilities
 
 import PIL.Image
 import pyautogui
@@ -756,9 +757,17 @@ async def main():
     """Run the Screenshot MCP server."""
     logger.info("Starting Screenshot MCP Server...")
     
-    async with stdio_server(server):
-        # The server will run until the connection is closed
-        await asyncio.Event().wait()
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="screenshot-mcp",
+                server_version="0.1.0",
+                capabilities=ServerCapabilities(tools={}),
+                instructions="Screenshot MCP Server for screen capture and analysis"
+            )
+        )
 
 
 if __name__ == "__main__":
