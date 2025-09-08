@@ -328,7 +328,14 @@ The HID Input MCP server can run in a Docker container with full GUI automation 
 
 ```bash
 # Using Docker Compose (recommended)
+# Copy .env.example to .env and configure as needed
+cp .env.example .env
+
+# Run with docker-compose
 docker-compose up --build
+
+# Run with VNC password
+VNC_PASSWORD=mypassword docker-compose up
 
 # Or using Docker directly
 docker build -t hid-input-mcp .
@@ -365,6 +372,25 @@ docker run -it --rm --privileged \
 - `CHROME_URL` - Initial browser URL
 - `MCP_LOG_LEVEL` - Logging level (INFO/DEBUG)
 
+#### Docker Compose Commands
+
+```bash
+# Start services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Rebuild and start
+docker-compose up --build
+
+# Scale services
+docker-compose up --scale screenshot-mcp=2
+```
+
 #### VNC Debugging
 
 Connect to the container's virtual display:
@@ -374,6 +400,9 @@ open vnc://localhost:5900
 
 # Linux
 vncviewer localhost:5900
+
+# With password (if set)
+# Enter the password when prompted
 ```
 
 ## 📚 참고 자료

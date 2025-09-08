@@ -10,6 +10,8 @@ services:
       - DISPLAY=:99
       - START_BROWSER=false
       - CHROME_URL=https://www.google.com
+      # VNC Password (optional - remove or leave empty for no password)
+      - VNC_PASSWORD=${VNC_PASSWORD:-}
       # MCP Configuration
       - MCP_LOG_LEVEL=INFO
     ports:
