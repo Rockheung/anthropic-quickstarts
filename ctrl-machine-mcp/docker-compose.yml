@@ -1,11 +1,14 @@
 version: '3.8'
 
 services:
-  hid-mcp:
+  mcp-unified:
+    image: mcp-unified:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: hid-input-mcp
+      platforms:
+        - linux/amd64
+    container_name: mcp-unified
     environment:
       - DISPLAY=:99
       - START_BROWSER=false
@@ -14,14 +17,20 @@ services:
       - VNC_PASSWORD=${VNC_PASSWORD:-}
       # MCP Configuration
       - MCP_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
     ports:
       # VNC port for debugging (view the virtual display)
       - "5900:5900"
-      # MCP server port (if using HTTP transport)
+      # HID MCP server port (if using HTTP transport)
       - "8080:8080"
+      # Screenshot MCP server port (if using HTTP transport)
+      - "8081:8081"
     volumes:
-      # Mount the MCP server script
+      # Mount both MCP server scripts
       - ./hid_input_mcp.py:/app/hid_input_mcp.py:ro
+      - ./screenshot_mcp.py:/app/screenshot_mcp.py:ro
+      # Optional: Save screenshots
+      - ./screenshots:/app/screenshots
       # Share X11 socket (for host display, optional)
       # - /tmp/.X11-unix:/tmp/.X11-unix:rw
     # Required for GUI automation
@@ -37,33 +46,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-
-  # Screenshot MCP server for screen capture
-  screenshot-mcp:
-    build:
-      context: .
-      dockerfile: Dockerfile.simple
-    container_name: screenshot-mcp
-    environment:
-      - DISPLAY=:99
-      - MCP_LOG_LEVEL=INFO
-    ports:
-      # Optional port for debugging
-      - "8081:8081"
-    volumes:
-      # Mount the screenshot MCP server script
-      - ./screenshot_mcp.py:/app/screenshot_mcp.py:ro
-      # Optional: Save screenshots
-      - ./screenshots:/app/screenshots
-    command: ["python3", "/app/screenshot_mcp.py"]
-    privileged: true
-    shm_size: '2gb'
-    stdin_open: true
-    tty: true
-    networks:
-      - mcp-network
-    depends_on:
-      - hid-mcp
 
 networks:
   mcp-network:

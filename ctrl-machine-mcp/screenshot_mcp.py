@@ -18,7 +18,7 @@ from datetime import datetime
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import Tool, TextContent, ImageContent
 
 import PIL.Image
 import pyautogui

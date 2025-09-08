@@ -76,8 +76,9 @@ RUN useradd -m -s /bin/bash mcpuser && \
 # Set working directory
 WORKDIR /app
 
-# Copy the HID input MCP server
+# Copy both MCP servers
 COPY hid_input_mcp.py /app/
+COPY screenshot_mcp.py /app/
 COPY requirements.txt /app/
 
 # Create requirements file if it doesn't exist
@@ -90,8 +91,33 @@ RUN echo "pyautogui==0.9.54" > /app/requirements.txt && \
     echo "mss>=9.0.1" >> /app/requirements.txt && \
     echo "numpy>=1.24.0" >> /app/requirements.txt
 
-# Install Python packages
-RUN pip3 install --no-cache-dir -r /app/requirements.txt
+# Install Python packages including supervisor
+RUN pip3 install --no-cache-dir -r /app/requirements.txt && \
+    pip3 install --no-cache-dir supervisor
+
+# Create supervisor configuration for running both MCP servers
+RUN mkdir -p /etc/supervisor/conf.d && \
+    echo '[supervisord]' > /etc/supervisor/supervisord.conf && \
+    echo 'nodaemon=true' >> /etc/supervisor/supervisord.conf && \
+    echo 'user=mcpuser' >> /etc/supervisor/supervisord.conf && \
+    echo 'logfile=/tmp/supervisord.log' >> /etc/supervisor/supervisord.conf && \
+    echo 'pidfile=/tmp/supervisord.pid' >> /etc/supervisor/supervisord.conf && \
+    echo '' >> /etc/supervisor/supervisord.conf && \
+    echo '[program:hid-mcp]' >> /etc/supervisor/supervisord.conf && \
+    echo 'command=python3 /app/hid_input_mcp.py' >> /etc/supervisor/supervisord.conf && \
+    echo 'autostart=true' >> /etc/supervisor/supervisord.conf && \
+    echo 'autorestart=true' >> /etc/supervisor/supervisord.conf && \
+    echo 'stderr_logfile=/tmp/hid-mcp.err.log' >> /etc/supervisor/supervisord.conf && \
+    echo 'stdout_logfile=/tmp/hid-mcp.out.log' >> /etc/supervisor/supervisord.conf && \
+    echo 'environment=DISPLAY=":99",PYTHONUNBUFFERED="1"' >> /etc/supervisor/supervisord.conf && \
+    echo '' >> /etc/supervisor/supervisord.conf && \
+    echo '[program:screenshot-mcp]' >> /etc/supervisor/supervisord.conf && \
+    echo 'command=python3 /app/screenshot_mcp.py' >> /etc/supervisor/supervisord.conf && \
+    echo 'autostart=true' >> /etc/supervisor/supervisord.conf && \
+    echo 'autorestart=true' >> /etc/supervisor/supervisord.conf && \
+    echo 'stderr_logfile=/tmp/screenshot-mcp.err.log' >> /etc/supervisor/supervisord.conf && \
+    echo 'stdout_logfile=/tmp/screenshot-mcp.out.log' >> /etc/supervisor/supervisord.conf && \
+    echo 'environment=DISPLAY=":99",PYTHONUNBUFFERED="1"' >> /etc/supervisor/supervisord.conf
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
@@ -126,8 +152,12 @@ if [ "$START_BROWSER" = "true" ]; then\n\
         ${CHROME_URL:-"https://www.google.com"} &\n\
 fi\n\
 \n\
-# Run the MCP server or any command passed\n\
-exec "$@"\n\
+# Run supervisor to manage both MCP servers or any command passed\n\
+if [ "$1" = "supervisor" ]; then\n\
+    exec /usr/local/bin/supervisord -c /etc/supervisor/supervisord.conf\n\
+else\n\
+    exec "$@"\n\
+fi\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
 # Create a healthcheck script
@@ -152,11 +182,12 @@ USER mcpuser
 
 # Expose ports
 # 5900 for VNC
-# 8080 for MCP server (if using HTTP transport)
-EXPOSE 5900 8080
+# 8080 for HID MCP server (if using HTTP transport)
+# 8081 for Screenshot MCP server (if using HTTP transport)
+EXPOSE 5900 8080 8081
 
 # Set entrypoint
 ENTRYPOINT ["/app/start.sh"]
 
-# Default command - run the HID input MCP server
-CMD ["python3", "/app/hid_input_mcp.py"]
+# Default command - run supervisor to manage both MCP servers
+CMD ["supervisor"]
