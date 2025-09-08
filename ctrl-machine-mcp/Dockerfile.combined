@@ -1,0 +1,184 @@
+# Combined Dockerfile for HID Input and Screenshot MCP Servers
+FROM python:3.12-slim
+
+# Environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV DISPLAY=:99
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Install dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build tools
+    gcc \
+    g++ \
+    make \
+    # X11 virtual framebuffer
+    xvfb \
+    x11vnc \
+    # Python GUI dependencies
+    python3-tk \
+    python3-dev \
+    # X11 libraries for GUI automation
+    libx11-6 \
+    libxext6 \
+    libxrender1 \
+    libxinerama1 \
+    libxi6 \
+    libxrandr2 \
+    libxcursor1 \
+    libxtst6 \
+    libxkbfile1 \
+    # Additional utilities
+    supervisor \
+    netcat-openbsd \
+    curl \
+    # Desktop environment
+    fluxbox \
+    # Web browser
+    firefox-esr \
+    # Terminal
+    xterm \
+    # Clean up
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy all MCP server files
+COPY hid_input_mcp.py /app/
+COPY screenshot_mcp.py /app/
+COPY test_*.py /app/
+COPY requirements.txt /app/
+
+# Install Python packages
+RUN pip install --no-cache-dir \
+    pyautogui==0.9.54 \
+    pynput==1.8.1 \
+    mcp==1.13.1 \
+    pillow>=10.0.0 \
+    mss>=9.0.1 \
+    numpy>=1.24.0 \
+    # HTTP server for debugging
+    aiohttp>=3.9.0 \
+    python-json-logger>=2.0.0
+
+# Create supervisord configuration
+RUN echo '[supervisord]\n\
+nodaemon=true\n\
+logfile=/var/log/supervisor/supervisord.log\n\
+pidfile=/var/run/supervisord.pid\n\
+\n\
+[program:xvfb]\n\
+command=Xvfb :99 -screen 0 1920x1080x24\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/var/log/xvfb.log\n\
+stderr_logfile=/var/log/xvfb.err\n\
+\n\
+[program:x11vnc]\n\
+command=x11vnc -display :99 -passwd password123 -listen 0.0.0.0 -forever -shared\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/var/log/x11vnc.log\n\
+stderr_logfile=/var/log/x11vnc.err\n\
+\n\
+[program:fluxbox]\n\
+command=fluxbox\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/var/log/fluxbox.log\n\
+stderr_logfile=/var/log/fluxbox.err\n\
+environment=DISPLAY=\":99\"\n\
+\n\
+[program:firefox]\n\
+command=firefox --new-window https://www.google.com\n\
+autostart=true\n\
+autorestart=false\n\
+startretries=1\n\
+stdout_logfile=/var/log/firefox.log\n\
+stderr_logfile=/var/log/firefox.err\n\
+environment=DISPLAY=\":99\"\n\
+startsecs=10\n\
+\n\
+[program:hid_mcp]\n\
+command=python3 /app/hid_input_mcp.py\n\
+directory=/app\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/var/log/hid_mcp.log\n\
+stderr_logfile=/var/log/hid_mcp.err\n\
+environment=DISPLAY=":99",PYTHONUNBUFFERED="1"\n\
+\n\
+[program:screenshot_mcp]\n\
+command=python3 /app/screenshot_mcp.py\n\
+directory=/app\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/var/log/screenshot_mcp.log\n\
+stderr_logfile=/var/log/screenshot_mcp.err\n\
+environment=DISPLAY=":99",PYTHONUNBUFFERED="1"\n\
+' > /etc/supervisor/conf.d/supervisord.conf
+
+# Create directories for logs and screenshots
+RUN mkdir -p /var/log/supervisor /app/screenshots
+
+# Create health check script
+RUN echo '#!/usr/bin/env python3\n\
+import sys\n\
+import pyautogui\n\
+import mss\n\
+\n\
+try:\n\
+    # Check PyAutoGUI\n\
+    size = pyautogui.size()\n\
+    print(f"Screen: {size.width}x{size.height}")\n\
+    \n\
+    # Check MSS\n\
+    with mss.mss() as sct:\n\
+        print(f"Monitors: {len(sct.monitors)}")\n\
+    \n\
+    print("Health check passed")\n\
+    sys.exit(0)\n\
+except Exception as e:\n\
+    print(f"Health check failed: {e}")\n\
+    sys.exit(1)\n\
+' > /app/healthcheck.py && chmod +x /app/healthcheck.py
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+echo "Starting MCP servers..."\n\
+echo "Display: $DISPLAY"\n\
+echo "HID MCP Port: ${HID_PORT:-8080}"\n\
+echo "Screenshot MCP Port: ${SCREENSHOT_PORT:-8081}"\n\
+echo "VNC Port: 5900"\n\
+\n\
+# Ensure log directory exists\n\
+mkdir -p /var/log/supervisor\n\
+\n\
+# Start supervisor to manage all processes\n\
+exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Expose ports
+# 5900 - VNC for visual debugging
+# 8080 - HID Input MCP server (if using HTTP transport)
+# 8081 - Screenshot MCP server (if using HTTP transport)
+EXPOSE 5900 8080 8081
+
+# Run as non-root user for security
+RUN useradd -m -s /bin/bash mcpuser && \
+    chown -R mcpuser:mcpuser /app && \
+    chown -R mcpuser:mcpuser /var/log && \
+    mkdir -p /var/log/supervisor && \
+    chown -R mcpuser:mcpuser /var/log/supervisor
+USER mcpuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python3 /app/healthcheck.py || exit 1
+
+# Default command
+ENTRYPOINT ["/app/start.sh"]
