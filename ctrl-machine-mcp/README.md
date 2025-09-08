@@ -332,7 +332,12 @@ docker-compose up --build
 
 # Or using Docker directly
 docker build -t hid-input-mcp .
-docker run -it --rm --privileged -p 5900:5900 hid-input-mcp
+
+# Run without VNC password
+docker run -d --rm --privileged -p 5900:5900 --name hid-mcp hid-input-mcp
+
+# Run with VNC password
+docker run -d --rm --privileged -p 5900:5900 -e VNC_PASSWORD=yourpassword --name hid-mcp hid-input-mcp
 ```
 
 #### Features
@@ -355,6 +360,7 @@ docker run -it --rm --privileged \
 #### Environment Variables
 
 - `DISPLAY=:99` - Virtual display number
+- `VNC_PASSWORD` - VNC password (optional, no password if not set)
 - `START_BROWSER=true/false` - Launch Chrome on startup
 - `CHROME_URL` - Initial browser URL
 - `MCP_LOG_LEVEL` - Logging level (INFO/DEBUG)

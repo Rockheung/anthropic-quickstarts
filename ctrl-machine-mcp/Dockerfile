@@ -1,5 +1,6 @@
 # Use Python 3.12 slim image based on Debian (lighter than Ubuntu)
-FROM python:3.12-slim
+# Support both amd64 and arm64 architectures
+FROM --platform=linux/amd64 python:3.12-slim
 
 # Set environment variables to prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
@@ -7,6 +8,8 @@ ENV PYTHONUNBUFFERED=1
 ENV DISPLAY=:99
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
+# Optional VNC password (can be overridden at runtime)
+ENV VNC_PASSWORD=""
 
 # Update system and install essential packages
 RUN apt-get update && apt-get install -y \
@@ -24,7 +27,6 @@ RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
     lsb-release \
-    software-properties-common \
     sudo \
     git \
     nano \
@@ -33,6 +35,10 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     python3-pil \
     python3-pil.imagetk \
+    # Build dependencies for evdev
+    gcc \
+    libc6-dev \
+    linux-libc-dev \
     # Additional X11 libraries
     libx11-dev \
     libxext-dev \
@@ -47,13 +53,21 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Chrome for browser automation
-RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list \
+# Install Chrome for browser automation (using new GPG key method)
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
     && apt-get install -y google-chrome-stable \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Korean fonts (Nanum) - download directly from Ubuntu repository
+RUN wget -P /tmp https://launchpad.net/ubuntu/+archive/primary/+files/fonts-nanum_20200506-1_all.deb \
+    && wget -P /tmp https://launchpad.net/ubuntu/+archive/primary/+files/fonts-nanum-coding_2.5-1_all.deb \
+    && dpkg -i /tmp/fonts-nanum*.deb || true \
+    && apt-get update && apt-get install -f -y \
+    && rm /tmp/fonts-nanum*.deb \
+    && fc-cache -fv
 
 # Create a non-root user for running the application
 RUN useradd -m -s /bin/bash mcpuser && \
@@ -68,11 +82,13 @@ COPY requirements.txt /app/
 
 # Create requirements file if it doesn't exist
 RUN echo "pyautogui==0.9.54" > /app/requirements.txt && \
-    echo "pynput==1.8.1" >> /app/requirements.txt && \
-    echo "mcp==1.13.1" >> /app/requirements.txt && \
+    echo "pynput==1.7.6" >> /app/requirements.txt && \
+    echo "mcp>=0.1.0" >> /app/requirements.txt && \
     echo "pillow>=10.0.0" >> /app/requirements.txt && \
     echo "python-xlib>=0.33" >> /app/requirements.txt && \
-    echo "pyscreeze>=0.1.30" >> /app/requirements.txt
+    echo "pyscreeze>=0.1.30" >> /app/requirements.txt && \
+    echo "mss>=9.0.1" >> /app/requirements.txt && \
+    echo "numpy>=1.24.0" >> /app/requirements.txt
 
 # Install Python packages
 RUN pip3 install --no-cache-dir -r /app/requirements.txt
@@ -87,8 +103,16 @@ sleep 2\n\
 fluxbox &\n\
 sleep 2\n\
 \n\
-# Start VNC server (optional, for debugging)\n\
-x11vnc -display :99 -nopw -listen 0.0.0.0 -forever -shared &\n\
+# Start VNC server with optional password\n\
+if [ -n "$VNC_PASSWORD" ]; then\n\
+    # Create VNC password file\n\
+    mkdir -p ~/.vnc\n\
+    x11vnc -storepasswd "$VNC_PASSWORD" ~/.vnc/passwd\n\
+    x11vnc -display :99 -rfbauth ~/.vnc/passwd -listen 0.0.0.0 -forever -shared &\n\
+else\n\
+    # No password\n\
+    x11vnc -display :99 -nopw -listen 0.0.0.0 -forever -shared &\n\
+fi\n\
 \n\
 # Start Chrome in kiosk mode (optional)\n\
 if [ "$START_BROWSER" = "true" ]; then\n\
