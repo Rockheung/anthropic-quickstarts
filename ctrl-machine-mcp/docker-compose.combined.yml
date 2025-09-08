@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # Combined MCP server container with both HID and Screenshot
+  mcp-combined:
+    build:
+      context: .
+      dockerfile: Dockerfile.combined
+    container_name: mcp-combined
+    hostname: mcp-server
+    environment:
+      # Display configuration
+      - DISPLAY=:99
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1080
+      # MCP Configuration
+      - MCP_LOG_LEVEL=INFO
+      - HID_PORT=8080
+      - SCREENSHOT_PORT=8081
+      # Optional browser for testing
+      - START_BROWSER=false
+      - CHROME_URL=https://www.google.com
+    ports:
+      # VNC server for visual debugging
+      - "5900:5900"
+      # HID Input MCP server port
+      - "8080:8080"
+      # Screenshot MCP server port  
+      - "8081:8081"
+    volumes:
+      # Mount MCP server scripts (for development)
+      - ./hid_input_mcp.py:/app/hid_input_mcp.py:ro
+      - ./screenshot_mcp.py:/app/screenshot_mcp.py:ro
+      # Mount test scripts
+      - ./test_combined.py:/app/test_combined.py:ro
+      - ./test_screenshot.py:/app/test_screenshot.py:ro
+      - ./test_docker.py:/app/test_docker.py:ro
+      # Logs directory (optional, for debugging)
+      - ./logs:/var/log:rw
+      # Screenshots directory (optional)
+      - ./screenshots:/app/screenshots:rw
+    # Required for hardware access
+    privileged: true
+    # Shared memory for large screenshots
+    shm_size: '2gb'
+    # Keep stdin open for MCP communication
+    stdin_open: true
+    tty: true
+    networks:
+      - mcp-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "/app/healthcheck.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Optional: Separate HID-only container
+  hid-mcp-only:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    container_name: hid-mcp-only
+    profiles:
+      - separate
+    environment:
+      - DISPLAY=:99
+      - MCP_LOG_LEVEL=INFO
+    ports:
+      - "8082:8080"
+      - "5901:5900"
+    volumes:
+      - ./hid_input_mcp.py:/app/hid_input_mcp.py:ro
+    command: ["python3", "/app/hid_input_mcp.py"]
+    privileged: true
+    shm_size: '1gb'
+    stdin_open: true
+    tty: true
+    networks:
+      - mcp-network
+
+  # Optional: Separate Screenshot-only container
+  screenshot-mcp-only:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    container_name: screenshot-mcp-only
+    profiles:
+      - separate
+    environment:
+      - DISPLAY=:99
+      - MCP_LOG_LEVEL=INFO
+    ports:
+      - "8083:8081"
+      - "5902:5900"
+    volumes:
+      - ./screenshot_mcp.py:/app/screenshot_mcp.py:ro
+      - ./screenshots:/app/screenshots:rw
+    command: ["python3", "/app/screenshot_mcp.py"]
+    privileged: true
+    shm_size: '1gb'
+    stdin_open: true
+    tty: true
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  screenshots:
+    driver: local
+  logs:
+    driver: local
