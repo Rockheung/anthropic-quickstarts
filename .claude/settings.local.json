@@ -8,7 +8,13 @@
       "mcp__screenshot-mcp__capture_screenshot",
       "mcp__hid-input-mcp__type_text",
       "mcp__hid-input-mcp__click_mouse",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(python3:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker-compose restart:*)"
     ],
     "deny": [],
     "ask": []

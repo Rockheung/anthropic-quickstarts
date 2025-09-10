@@ -76,7 +76,8 @@ RUN useradd -m -s /bin/bash mcpuser && \
 # Set working directory
 WORKDIR /app
 
-# Copy both MCP servers
+# Copy unified MCP server and legacy servers for compatibility
+COPY unified_mcp_server.py /app/
 COPY hid_input_mcp.py /app/
 COPY screenshot_mcp.py /app/
 COPY requirements.txt /app/
@@ -95,29 +96,14 @@ RUN echo "pyautogui==0.9.54" > /app/requirements.txt && \
 RUN pip3 install --no-cache-dir -r /app/requirements.txt && \
     pip3 install --no-cache-dir supervisor
 
-# Create supervisor configuration for running both MCP servers
+# Note: MCP servers run via stdio, not as standalone services
+# We only start X11/VNC services, not the MCP servers themselves
 RUN mkdir -p /etc/supervisor/conf.d && \
     echo '[supervisord]' > /etc/supervisor/supervisord.conf && \
     echo 'nodaemon=true' >> /etc/supervisor/supervisord.conf && \
     echo 'user=mcpuser' >> /etc/supervisor/supervisord.conf && \
     echo 'logfile=/tmp/supervisord.log' >> /etc/supervisor/supervisord.conf && \
-    echo 'pidfile=/tmp/supervisord.pid' >> /etc/supervisor/supervisord.conf && \
-    echo '' >> /etc/supervisor/supervisord.conf && \
-    echo '[program:hid-mcp]' >> /etc/supervisor/supervisord.conf && \
-    echo 'command=python3 /app/hid_input_mcp.py' >> /etc/supervisor/supervisord.conf && \
-    echo 'autostart=true' >> /etc/supervisor/supervisord.conf && \
-    echo 'autorestart=true' >> /etc/supervisor/supervisord.conf && \
-    echo 'stderr_logfile=/tmp/hid-mcp.err.log' >> /etc/supervisor/supervisord.conf && \
-    echo 'stdout_logfile=/tmp/hid-mcp.out.log' >> /etc/supervisor/supervisord.conf && \
-    echo 'environment=DISPLAY=":99",PYTHONUNBUFFERED="1"' >> /etc/supervisor/supervisord.conf && \
-    echo '' >> /etc/supervisor/supervisord.conf && \
-    echo '[program:screenshot-mcp]' >> /etc/supervisor/supervisord.conf && \
-    echo 'command=python3 /app/screenshot_mcp.py' >> /etc/supervisor/supervisord.conf && \
-    echo 'autostart=true' >> /etc/supervisor/supervisord.conf && \
-    echo 'autorestart=true' >> /etc/supervisor/supervisord.conf && \
-    echo 'stderr_logfile=/tmp/screenshot-mcp.err.log' >> /etc/supervisor/supervisord.conf && \
-    echo 'stdout_logfile=/tmp/screenshot-mcp.out.log' >> /etc/supervisor/supervisord.conf && \
-    echo 'environment=DISPLAY=":99",PYTHONUNBUFFERED="1"' >> /etc/supervisor/supervisord.conf
+    echo 'pidfile=/tmp/supervisord.pid' >> /etc/supervisor/supervisord.conf
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
@@ -181,13 +167,13 @@ except Exception as e:\n\
 USER mcpuser
 
 # Expose ports
-# 5900 for VNC
-# 8080 for HID MCP server (if using HTTP transport)
-# 8081 for Screenshot MCP server (if using HTTP transport)
-EXPOSE 5900 8080 8081
+# 5900 for VNC (for debugging)
+# MCP servers use stdio, not network ports
+EXPOSE 5900
 
 # Set entrypoint
 ENTRYPOINT ["/app/start.sh"]
 
-# Default command - run supervisor to manage both MCP servers
-CMD ["supervisor"]
+# Default command - start X11 services only
+# MCP servers will be invoked via stdio by Claude Code
+CMD ["bash"]

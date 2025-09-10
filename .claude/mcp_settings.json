@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "test-mcp": {
+      "command": "docker",
+      "args": ["exec", "-i", "mcp-unified", "python3", "/app/test_simple_mcp.py"],
+      "env": {
+        "DISPLAY": ":99",
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  }
+}

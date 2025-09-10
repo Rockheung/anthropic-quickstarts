@@ -21,12 +21,9 @@ services:
     ports:
       # VNC port for debugging (view the virtual display)
       - "5900:5900"
-      # HID MCP server port (if using HTTP transport)
-      - "8080:8080"
-      # Screenshot MCP server port (if using HTTP transport)
-      - "8081:8081"
     volumes:
-      # Mount both MCP server scripts
+      # Mount unified MCP server and legacy servers
+      - ./unified_mcp_server.py:/app/unified_mcp_server.py:ro
       - ./hid_input_mcp.py:/app/hid_input_mcp.py:ro
       - ./screenshot_mcp.py:/app/screenshot_mcp.py:ro
       # Optional: Save screenshots
