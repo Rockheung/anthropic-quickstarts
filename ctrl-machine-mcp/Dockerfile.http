@@ -1,0 +1,69 @@
+FROM --platform=linux/amd64 python:3.12-slim
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DISPLAY=:99
+ENV PYTHONUNBUFFERED=1
+ENV LANG=ko_KR.UTF-8
+ENV LC_ALL=ko_KR.UTF-8
+ENV LANGUAGE=ko_KR:ko
+ENV VNC_PASSWORD=""
+
+# Install system dependencies and Korean locale
+RUN apt-get update && apt-get install -y \
+    locales \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    supervisor \
+    scrot \
+    imagemagick \
+    xdotool \
+    xclip \
+    curl \
+    wget \
+    gnupg \
+    lsb-release \
+    fontconfig \
+    && sed -i '/ko_KR.UTF-8/s/^# //g' /etc/locale.gen \
+    && locale-gen \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Korean fonts (Nanum)
+RUN wget -P /tmp https://launchpad.net/ubuntu/+archive/primary/+files/fonts-nanum_20200506-1_all.deb \
+    && wget -P /tmp https://launchpad.net/ubuntu/+archive/primary/+files/fonts-nanum-coding_2.5-1_all.deb \
+    && dpkg -i /tmp/fonts-nanum*.deb || true \
+    && apt-get update && apt-get install -f -y \
+    && rm /tmp/fonts-nanum*.deb \
+    && fc-cache -fv
+
+# Create non-root user
+RUN useradd -m -s /bin/bash mcpuser && \
+    mkdir -p /home/mcpuser/.vnc /app/screenshots && \
+    chown -R mcpuser:mcpuser /home/mcpuser /app
+
+WORKDIR /app
+
+# Copy MCP server files
+COPY screenshot_mcp_http.py hid_input_mcp_http.py requirements-http.txt ./
+RUN chown -R mcpuser:mcpuser /app
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r requirements-http.txt
+
+# Copy supervisor configuration
+COPY supervisord-http.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Copy startup script
+COPY start-http.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+USER root
+
+# Expose ports
+EXPOSE 5900 8080 8081
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health && curl -f http://localhost:8081/health || exit 1
+
+CMD ["/app/start.sh"]

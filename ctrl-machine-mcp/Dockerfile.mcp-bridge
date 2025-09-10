@@ -1,0 +1,101 @@
+FROM --platform=linux/amd64 python:3.12-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    xvfb \
+    x11vnc \
+    fluxbox \
+    xterm \
+    x11-utils \
+    scrot \
+    xdotool \
+    xclip \
+    wget \
+    curl \
+    gnupg \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Chrome for browser automation
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Korean fonts
+RUN apt-get update && apt-get install -y \
+    fonts-noto-cjk \
+    fonts-nanum \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && fc-cache -fv
+
+# Create non-root user
+RUN useradd -m -s /bin/bash mcpuser && \
+    echo 'mcpuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+WORKDIR /app
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir \
+    aiohttp==3.9.1 \
+    aiohttp-sse==2.2.0 \
+    mcp>=0.1.0 \
+    pillow>=10.0.0 \
+    pyautogui==0.9.54 \
+    mss>=9.0.1 \
+    python-xlib>=0.33
+
+# Copy MCP bridge server
+COPY mcp_http_bridge.py /app/
+
+# Create screenshots directory
+RUN mkdir -p /app/screenshots && chown -R mcpuser:mcpuser /app
+
+# Create startup script
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/bash
+
+# Start X virtual framebuffer
+Xvfb :99 -screen 0 1920x1080x24 &
+export DISPLAY=:99
+
+# Wait for X to be ready
+sleep 2
+
+# Start window manager
+fluxbox &
+
+# Start VNC server (optional, for debugging)
+x11vnc -display :99 -nopw -listen 0.0.0.0 -xkb -forever &
+
+# Start Chrome in the background (if needed)
+# google-chrome-stable --no-sandbox --disable-dev-shm-usage --disable-gpu &
+
+# Start Screenshot MCP Bridge
+MCP_SERVER_TYPE=screenshot SCREENSHOT_MCP_PORT=8080 python3 /app/mcp_http_bridge.py &
+echo "Started Screenshot MCP Bridge on port 8080"
+
+# Start HID Input MCP Bridge
+MCP_SERVER_TYPE=hid HID_MCP_PORT=8081 python3 /app/mcp_http_bridge.py &
+echo "Started HID Input MCP Bridge on port 8081"
+
+# Keep container running
+tail -f /dev/null
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health && curl -f http://localhost:8081/health || exit 1
+
+# Expose ports
+EXPOSE 5900 8080 8081
+
+# Run as non-root user
+USER mcpuser
+
+CMD ["/app/start.sh"]

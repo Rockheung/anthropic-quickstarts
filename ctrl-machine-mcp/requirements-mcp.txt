@@ -1,0 +1,10 @@
+# MCP Server Requirements
+aiohttp==3.9.1
+aiohttp-sse==2.2.0
+mcp>=0.1.0
+pillow>=10.0.0
+pyautogui==0.9.54
+mss>=9.0.1
+numpy>=1.24.0
+python-xlib>=0.33
+pyscreeze>=0.1.30

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  mcp-remote:
+    image: mcp-remote:latest
+    container_name: mcp-remote
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp-remote
+    environment:
+      - VNC_PASSWORD=${VNC_PASSWORD:-mcp123}
+      - DISPLAY=:99
+      - PYTHONUNBUFFERED=1
+      - SCREENSHOT_MCP_PORT=8080
+      - HID_MCP_PORT=8081
+    ports:
+      - "5900:5900"   # VNC
+      - "8080:8080"   # Screenshot MCP Server
+      - "8081:8081"   # HID Input MCP Server
+    volumes:
+      - ./screenshots:/app/screenshots:rw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge

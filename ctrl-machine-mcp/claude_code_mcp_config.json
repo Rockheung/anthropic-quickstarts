@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "docker-hid-input": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "mcp-unified",
+        "python3",
+        "/app/hid_input_mcp.py"
+      ],
+      "env": {
+        "MCP_LOG_LEVEL": "INFO"
+      }
+    },
+    "docker-screenshot": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "-i",
+        "mcp-unified",
+        "python3",
+        "/app/screenshot_mcp.py"
+      ],
+      "env": {
+        "MCP_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}

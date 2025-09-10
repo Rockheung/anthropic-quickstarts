@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(docker build:*)",
-      "Bash(docker stop:*)"
+      "Bash(docker stop:*)",
+      "WebSearch",
+      "mcp__hid-input-mcp__press_key",
+      "mcp__screenshot-mcp__capture_screenshot",
+      "mcp__hid-input-mcp__type_text",
+      "mcp__hid-input-mcp__click_mouse"
     ],
     "deny": [],
     "ask": []

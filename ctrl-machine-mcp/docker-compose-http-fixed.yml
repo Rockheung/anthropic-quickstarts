@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mcp-http-fixed:
+    image: mcp-http-fixed:latest
+    container_name: mcp-http-fixed
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile.http-fixed
+    environment:
+      - VNC_PASSWORD=${VNC_PASSWORD:-mcp123}
+      - DISPLAY=:99
+      - PYTHONUNBUFFERED=1
+      - SCREENSHOT_MCP_PORT=8080
+      - HID_MCP_PORT=8081
+    ports:
+      - "5900:5900"   # VNC
+      - "8080:8080"   # Screenshot MCP HTTP
+      - "8081:8081"   # HID Input MCP HTTP
+    volumes:
+      - ./screenshots:/app/screenshots:rw
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

@@ -1,0 +1,160 @@
+# Use Python 3.12 slim image (same as stdio version)
+FROM --platform=linux/amd64 python:3.12-slim
+
+# Set environment variables (same as stdio)
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV DISPLAY=:99
+ENV LANG=ko_KR.UTF-8
+ENV LC_ALL=ko_KR.UTF-8
+ENV VNC_PASSWORD=""
+
+# Install system packages (same as stdio but with locale support)
+RUN apt-get update && apt-get install -y \
+    # Locale support
+    locales \
+    # X11 and display dependencies
+    xvfb \
+    x11vnc \
+    fluxbox \
+    xterm \
+    # GUI automation dependencies
+    scrot \
+    xdotool \
+    xclip \
+    # System utilities
+    wget \
+    curl \
+    gnupg \
+    lsb-release \
+    sudo \
+    git \
+    nano \
+    # Libraries for PyAutoGUI
+    python3-tk \
+    python3-dev \
+    python3-pil \
+    python3-pil.imagetk \
+    # Build dependencies
+    gcc \
+    libc6-dev \
+    linux-libc-dev \
+    # Additional X11 libraries
+    libx11-dev \
+    libxext-dev \
+    libxrender-dev \
+    libxinerama-dev \
+    libxi-dev \
+    libxrandr-dev \
+    libxcursor-dev \
+    libxtst-dev \
+    libxkbfile-dev \
+    # Clean up
+    && sed -i '/ko_KR.UTF-8/s/^# //g' /etc/locale.gen \
+    && locale-gen \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Chrome (same as stdio)
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Korean fonts (same as stdio)
+RUN wget -P /tmp https://launchpad.net/ubuntu/+archive/primary/+files/fonts-nanum_20200506-1_all.deb \
+    && wget -P /tmp https://launchpad.net/ubuntu/+archive/primary/+files/fonts-nanum-coding_2.5-1_all.deb \
+    && dpkg -i /tmp/fonts-nanum*.deb || true \
+    && apt-get update && apt-get install -f -y \
+    && rm /tmp/fonts-nanum*.deb \
+    && fc-cache -fv
+
+# Create non-root user (same as stdio)
+RUN useradd -m -s /bin/bash mcpuser && \
+    echo 'mcpuser ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+WORKDIR /app
+
+# Copy HTTP MCP servers
+COPY screenshot_mcp_http.py /app/
+COPY hid_input_mcp_http.py /app/
+
+# Create screenshots directory
+RUN mkdir -p /app/screenshots && chown -R mcpuser:mcpuser /app
+
+# Install Python packages for HTTP version
+RUN pip3 install --no-cache-dir \
+    aiohttp==3.9.1 \
+    mcp>=0.1.0 \
+    pillow>=10.0.0 \
+    pyautogui==0.9.54 \
+    mss>=9.0.1 \
+    numpy>=1.24.0 \
+    python-xlib>=0.33 \
+    pyscreeze>=0.1.30 \
+    supervisor
+
+# Create startup script that starts everything properly
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "Starting X virtual framebuffer..."\n\
+Xvfb :99 -screen 0 1920x1080x24 &\n\
+XVFB_PID=$!\n\
+sleep 3\n\
+\n\
+echo "Starting window manager..."\n\
+DISPLAY=:99 fluxbox &\n\
+FLUXBOX_PID=$!\n\
+sleep 2\n\
+\n\
+echo "Setting up VNC..."\n\
+if [ -n "$VNC_PASSWORD" ]; then\n\
+    mkdir -p /home/mcpuser/.vnc\n\
+    x11vnc -storepasswd "$VNC_PASSWORD" /home/mcpuser/.vnc/passwd\n\
+    x11vnc -display :99 -rfbauth /home/mcpuser/.vnc/passwd -listen 0.0.0.0 -forever -shared -noshm &\n\
+else\n\
+    x11vnc -display :99 -nopw -listen 0.0.0.0 -forever -shared -noshm &\n\
+fi\n\
+VNC_PID=$!\n\
+sleep 2\n\
+\n\
+echo "Starting Screenshot MCP HTTP server..."\n\
+DISPLAY=:99 python3 /app/screenshot_mcp_http.py &\n\
+SCREENSHOT_PID=$!\n\
+\n\
+echo "Starting HID Input MCP HTTP server..."\n\
+DISPLAY=:99 python3 /app/hid_input_mcp_http.py &\n\
+HID_PID=$!\n\
+\n\
+echo "All services started:"\n\
+echo "  Xvfb PID: $XVFB_PID"\n\
+echo "  Fluxbox PID: $FLUXBOX_PID"\n\
+echo "  VNC PID: $VNC_PID"\n\
+echo "  Screenshot MCP PID: $SCREENSHOT_PID"\n\
+echo "  HID MCP PID: $HID_PID"\n\
+\n\
+# Keep container running and forward signals\n\
+trap "kill $XVFB_PID $FLUXBOX_PID $VNC_PID $SCREENSHOT_PID $HID_PID" EXIT\n\
+\n\
+# Wait for any process to exit\n\
+wait -n\n\
+\n\
+# Exit with status of process that exited first\n\
+exit $?\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/health && curl -f http://localhost:8081/health || exit 1
+
+# Switch to non-root user
+USER mcpuser
+
+# Expose ports
+EXPOSE 5900 8080 8081
+
+# Run startup script
+ENTRYPOINT ["/app/start.sh"]

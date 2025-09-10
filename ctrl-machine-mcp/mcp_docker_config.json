@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "docker-screenshot-mcp": {
+      "type": "http",
+      "url": "http://localhost:8080/mcp",
+      "description": "Screenshot capture MCP server running in Docker"
+    },
+    "docker-hid-mcp": {
+      "type": "http",
+      "url": "http://localhost:8081/mcp",
+      "description": "HID input control MCP server running in Docker"
+    }
+  },
+  "description": "MCP servers for computer control via Docker container",
+  "notes": {
+    "container": "mcp-unified or mcp-http",
+    "ports": {
+      "5900": "VNC access",
+      "8080": "Screenshot MCP HTTP API",
+      "8081": "HID Input MCP HTTP API"
+    },
+    "vnc": {
+      "default_password": "mcp123",
+      "env_variable": "VNC_PASSWORD"
+    },
+    "locale": "ko_KR.UTF-8",
+    "fonts": "Nanum (Korean)"
+  }
+}
