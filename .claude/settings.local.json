@@ -14,7 +14,11 @@
       "Bash(python3:*)",
       "Bash(docker-compose logs:*)",
       "Bash(docker exec:*)",
-      "Bash(docker-compose restart:*)"
+      "Bash(docker-compose restart:*)",
+      "Bash(docker-compose:*)",
+      "Bash(curl:*)",
+      "Bash(docker logs:*)",
+      "WebFetch(domain:blog.choonzang.com)"
     ],
     "deny": [],
     "ask": []
