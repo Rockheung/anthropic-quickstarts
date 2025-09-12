@@ -18,9 +18,14 @@
       "Bash(docker-compose:*)",
       "Bash(curl:*)",
       "Bash(docker logs:*)",
-      "WebFetch(domain:blog.choonzang.com)"
+      "WebFetch(domain:blog.choonzang.com)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "remote-computer-control"
+  ],
+  "enableAllProjectMcpServers": true
 }

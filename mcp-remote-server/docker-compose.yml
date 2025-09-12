@@ -7,54 +7,100 @@ services:
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
-    image: mcp-remote-server:latest
+      args:
+        - PYTHON_VERSION=3.12
+    image: mcp-remote-server:2.0.0
     container_name: mcp-remote-server
     platform: linux/amd64
     
     environment:
+      # Display configuration
       - DISPLAY=:99
+      
+      # Server configuration
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8000
-      - VNC_PASSWORD=${VNC_PASSWORD:-mcp123}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # Performance settings
+      - MAX_SCREENSHOT_SIZE=${MAX_SCREENSHOT_SIZE:-5242880}
+      - RATE_LIMIT_REQUESTS=${RATE_LIMIT_REQUESTS:-100}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW:-60}
+      
+      # VNC configuration (optional)
+      - ENABLE_VNC=${ENABLE_VNC:-false}
+      - VNC_PASSWORD=${VNC_PASSWORD:-}
+      
+      # Python settings
       - PYTHONUNBUFFERED=1
+      - PYTHONHASHSEED=random
+      - PYTHONDONTWRITEBYTECODE=1
     
     ports:
       # MCP HTTP API
-      - "8000:8000"
-      # VNC for debugging (optional)
-      - "5900:5900"
+      - "${MCP_PORT:-8000}:8000"
+      # VNC for debugging (only if enabled)
+      - "${VNC_PORT:-5900}:5900"
     
     volumes:
-      # Mount screenshots directory for debugging
-      - ./screenshots:/app/screenshots
-      # Mount logs
-      - ./logs:/app/logs
+      # Optional: Mount directories for debugging/monitoring
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 100M
     
     networks:
       - mcp-network
     
     restart: unless-stopped
     
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN  # Required for X11
+    read_only: false  # X11 needs write access
     
-    # Resource limits
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 90s
+    
+    # Resource limits for better performance
     deploy:
       resources:
         limits:
-          cpus: '2'
+          cpus: '2.0'
           memory: 2G
+          pids: 200
         reservations:
-          cpus: '1'
-          memory: 1G
+          cpus: '0.5'
+          memory: 512M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        
+    # Labels for container management
+    labels:
+      - "com.docker.compose.project=mcp-remote-server"
+      - "version=2.0.0"
+      - "description=MCP server for remote computer control"
 
 networks:
   mcp-network:
     driver: bridge
     ipam:
+      driver: default
       config:
         - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
+    driver_opts:
+      com.docker.network.bridge.name: br-mcp

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "remote-computer-control": {
+      "transport": "http",
+      "url": "http://localhost:8000/sse",
+      "description": "Remote computer control via SSE transport"
+    }
+  }
+}
